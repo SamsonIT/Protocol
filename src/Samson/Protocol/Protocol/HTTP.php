@@ -6,7 +6,6 @@ use Samson\Protocol\Socket;
 
 class HTTP
 {
-    private $s;
 
     private $timeout = 5000;
 
@@ -19,8 +18,8 @@ class HTTP
     {
         $urlData = parse_url($url);
 
-        $this->s = new Socket($this->timeout);
-        $this->s->connect($urlData['host'], 80);
+        $socket = new Socket($this->timeout);
+        $socket->connect($urlData['host'], 80);
 
         if (!isset($headers['Host'])) {
             $headers[] = 'Host: '.$urlData['host'];
@@ -29,24 +28,24 @@ class HTTP
             $headers[] = 'Content-length: '.strlen($content);
         }
 
-        $this->s->writeLine(sprintf('%s %s HTTP/1.1', $method, $urlData['path'].(isset($urlData['query']) ? '?'.$urlData['query'] : '')));
+        $socket->writeLine(sprintf('%s %s HTTP/1.1', $method, $urlData['path'].(isset($urlData['query']) ? '?'.$urlData['query'] : '')));
 
         foreach ($headers as $header) {
-            $this->s->writeLine($header);
+            $socket->writeLine($header);
         }
-        $this->s->writeLine('');
+        $socket->writeLine('');
 
-        $this->s->write($content);
+        $socket->write($content);
 
-        return $this->parseResponse();
+        return $this->parseResponse($socket);
     }
 
-    private function parseResponse()
+    private function parseResponse(Socket $socket)
     {
-        $response = $this->s->readLine()."\r\n";
+        $response = $socket->readLine()."\r\n";
 
         $responseHeaders = array();
-        while ($l = $this->s->readLine()) {
+        while ($l = $socket->readLine()) {
             if (false === strpos($l, ": ")) {
                 throw new Exception\InvalidHeaderException("Malformed header '".$l."', missing ': ' ");
             }
@@ -56,14 +55,14 @@ class HTTP
         }
         $response .= "\r\n";
 
-        $content = $this->s->readCleanBuffer();
+        $content = $socket->readCleanBuffer();
         if (array_key_exists('Content-Length', $responseHeaders)) {
             while (strlen($content) < (int) $responseHeaders['Content-Length']) {
-                $read = $this->s->read(128);
+                $read = $socket->read(128);
                 $content .= $read;
             }
         } else {
-            while (false !== ($read = $this->s->read(128))) {
+            while (false !== ($read = $socket->read(128))) {
                 $content .= $read;
             }
         }
