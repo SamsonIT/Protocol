@@ -48,8 +48,7 @@ class HTTP
         $responseHeaders = array();
         while ($l = $this->s->readLine()) {
             if (false === strpos($l, ": ")) {
-                var_dump($l);
-                die();
+                throw new Exception\InvalidHeaderException("Malformed header '".$l."', missing ': ' ");
             }
             list($key, $val) = explode(": ", $l);
             $responseHeaders[$key] = $val;
