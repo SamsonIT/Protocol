@@ -44,15 +44,18 @@ class HTTP
 
     private function parseResponse(Socket $socket, $protocol)
     {
-        $response = $socket->readLine()."\r\n";
+        $response = $socket->readLine();
 
         $answerParts = explode(" ", $response, 3);
+
         if ($answerParts[0] != $protocol) {
             throw new Exception\InvalidHeaderException("Unexpected protocol answer. Expected ".$protocol.", got ".$answerParts[0]);
         }
         if (!is_numeric($answerParts[1])) {
             throw new Exception\InvalidHeaderException("The response status code should be numeric, got ".$answerParts[1]);
         }
+
+        $response .= "\r\n";
 
         $responseHeaders = array();
         while ($l = $socket->readLine()) {
@@ -65,7 +68,7 @@ class HTTP
         }
         $response .= "\r\n";
 
-        $content = $socket->readCleanBuffer();
+        $content = '';
         if (array_key_exists('Content-Length', $responseHeaders)) {
             while (strlen($content) < (int) $responseHeaders['Content-Length']) {
                 $read = $socket->read(128);

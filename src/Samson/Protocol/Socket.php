@@ -37,8 +37,9 @@ class Socket
 
     public function __destruct()
     {
-        if ($this->open === true)
+        if ($this->open === true) {
             $this->close();
+        }
     }
 
     public function writeLine($line)
@@ -55,14 +56,13 @@ class Socket
 
     public function readLine()
     {
-        $line = null;
-        while (false === ($pos = strpos($this->readBuffer, "\r\n"))) {
-            if (false === $this->open)
-                break;
-
-            if (false === $this->read(128)) {
+        $line = false;
+        while ($this->open && false === ($pos = strpos($this->readBuffer, "\r\n"))) {
+            if (false === $this->readSocket(128)) {
+                if ("" === $this->readBuffer) {
+                    return false;
+                }
                 $pos = strlen($this->readBuffer);
-                $this->close();
                 break;
             }
         }
@@ -73,21 +73,38 @@ class Socket
         return $line;
     }
 
-    public function readCleanBuffer()
-    {
-        $buffer = $this->readBuffer;
-        $this->readBuffer = '';
-        return $buffer;
-    }
-
     public function read($len)
     {
-        if (false === $this->open)
+        $return = substr($this->readBuffer, 0, $len);
+        if (strlen($return) < $len) {
+            if (false !== $this->readSocket($len - strlen($return))) {
+                $return = substr($this->readBuffer, 0, $len);
+            }
+        }
+
+        $this->readBuffer = substr($this->readBuffer, strlen($return));
+
+        return $return;
+    }
+
+    private function readSocket($len)
+    {
+        if (false === $this->open) {
             return false;
+        }
         $read = socket_read($this->s, $len);
-        if ("" === $read)
-            return false;
-        $this->readBuffer .= $read;
-        return $read === false ? "" : $read;
+
+        if (false === $read) {
+            if (socket_last_error($this->s) == 11) { // Nothing to read (yet)
+                return true;
+            } else { // Some error apparently happened
+                return false;
+            }
+        }
+
+        if (false !== $read) {
+            $this->readBuffer .= $read;
+        }
+        return true;
     }
 }
