@@ -21,7 +21,12 @@ class HTTP
         $urlData = parse_url($url);
 
         $socket = new Socket($this->timeout);
-        $socket->connect($urlData['host'], 80);
+
+        $port = 80;
+        if (isset($urlData['port'])) {
+            $port = $urlData['port'];
+        }
+        $socket->connect($urlData['host'], $port);
 
         if (!isset($headers['Host'])) {
             $headers[] = 'Host: '.$urlData['host'];
