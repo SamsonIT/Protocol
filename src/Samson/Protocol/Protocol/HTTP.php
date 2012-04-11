@@ -16,6 +16,8 @@ class HTTP
 
     public function request($url, $method = 'GET"', $headers = array(), $content = '')
     {
+        $protocol = 'HTTP/1.1';
+
         $urlData = parse_url($url);
 
         $socket = new Socket($this->timeout);
@@ -28,7 +30,7 @@ class HTTP
             $headers[] = 'Content-length: '.strlen($content);
         }
 
-        $socket->writeLine(sprintf('%s %s HTTP/1.1', $method, $urlData['path'].(isset($urlData['query']) ? '?'.$urlData['query'] : '')));
+        $socket->writeLine(sprintf('%s %s %s', $method, $urlData['path'].(isset($urlData['query']) ? '?'.$urlData['query'] : ''), $protocol));
 
         foreach ($headers as $header) {
             $socket->writeLine($header);
@@ -37,12 +39,20 @@ class HTTP
 
         $socket->write($content);
 
-        return $this->parseResponse($socket);
+        return $this->parseResponse($socket, $protocol);
     }
 
-    private function parseResponse(Socket $socket)
+    private function parseResponse(Socket $socket, $protocol)
     {
         $response = $socket->readLine()."\r\n";
+
+        $answerParts = explode(" ", $response, 3);
+        if ($answerParts[0] != $protocol) {
+            throw new Exception\InvalidHeaderException("Unexpected protocol answer. Expected ".$protocol.", got ".$answerParts[0]);
+        }
+        if (!is_numeric($answerParts[1])) {
+            throw new Exception\InvalidHeaderException("The response status code should be numeric, got ".$answerParts[1]);
+        }
 
         $responseHeaders = array();
         while ($l = $socket->readLine()) {
