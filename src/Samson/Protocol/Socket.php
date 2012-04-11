@@ -10,14 +10,14 @@ class Socket
 
     private $open = false;
 
-    public function __construct()
+    public function __construct($timeout = 5000)
     {
         $this->s = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
+        socket_set_option($this->s, SOL_SOCKET, SO_SNDTIMEO, array('sec' => floor($timeout / 1000), 'usec' => $timeout % 1000));
     }
 
     public function connect($host, $port)
     {
-        socket_set_option($this->s, SOL_SOCKET, SO_SNDTIMEO, array('sec' => 1, 'usec' => 0));
         try {
             if (false === socket_connect($this->s, $host, $port)) {
                 throw new SocketException('Connection error ('.socket_last_error($this->s).'): '.socket_strerror(socket_last_error($this->s)));

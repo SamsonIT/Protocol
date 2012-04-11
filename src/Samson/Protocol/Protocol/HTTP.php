@@ -8,11 +8,18 @@ class HTTP
 {
     private $s;
 
+    private $timeout = 5000;
+
+    public function setTimeout($timeout)
+    {
+        $this->timeout = $timeout;
+    }
+
     public function request($url, $method = 'GET"', $headers = array(), $content = '')
     {
         $urlData = parse_url($url);
 
-        $this->s = new Socket();
+        $this->s = new Socket($this->timeout);
         $this->s->connect($urlData['host'], 80);
 
         if (!isset($headers['Host'])) {
